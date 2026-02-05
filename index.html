@@ -203,21 +203,38 @@
         // 注册 Service Worker
         let swRegistration = null;
 
+        // 检查浏览器是否支持通知
+        if (!("Notification" in window)) {
+            alert("抱歉,您的浏览器不支持通知功能");
+        }
+
+        // 注册 Service Worker
         if ('serviceWorker' in navigator) {
+            console.log('开始注册 Service Worker...');
             navigator.serviceWorker.register('./sw.js')
                 .then(registration => {
-                    console.log('Service Worker 注册成功:', registration);
+                    console.log('Service Worker 注册成功');
+                    console.log('Registration scope:', registration.scope);
+                    console.log('Registration active:', registration.active);
                     swRegistration = registration;
+                    
+                    // 等待 Service Worker 激活
+                    if (registration.installing) {
+                        console.log('Service Worker 正在安装...');
+                    } else if (registration.waiting) {
+                        console.log('Service Worker 正在等待...');
+                    } else if (registration.active) {
+                        console.log('Service Worker 已激活');
+                    }
+                    
                     updatePermissionStatus();
                 })
                 .catch(error => {
                     console.error('Service Worker 注册失败:', error);
+                    console.error('错误详情:', error.message);
                 });
-        }
-
-        // 检查浏览器是否支持通知
-        if (!("Notification" in window)) {
-            alert("抱歉,您的浏览器不支持通知功能");
+        } else {
+            console.warn('浏览器不支持 Service Worker');
         }
 
         // 更新权限状态显示
