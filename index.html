@@ -199,7 +199,7 @@
         let swRegistration = null;
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('./sw.js')
                 .then(registration => {
                     console.log('Service Worker 注册成功:', registration);
                     swRegistration = registration;
