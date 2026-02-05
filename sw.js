@@ -1,8 +1,8 @@
 // Service Worker for Android Chrome Notifications
 const CACHE_NAME = 'notification-app-v1';
 const urlsToCache = [
-  '/',
-  '/index.html'
+  './index.html',
+  './manifest.json'
 ];
 
 // 安装 Service Worker
