@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安卓通知消息</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.granted {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.denied {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.default {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #004085;
+        }
+
+        .info strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 通知消息测试</h1>
+        <p class="subtitle">适用于安卓设备的Web通知</p>
+
+        <div id="status" class="status default">
+            通知权限状态: <span id="permissionStatus">未知</span>
+        </div>
+
+        <div class="input-group">
+            <label for="notificationTitle">通知标题</label>
+            <input type="text" id="notificationTitle" placeholder="请输入通知标题" value="新消息">
+        </div>
+
+        <div class="input-group">
+            <label for="notificationBody">通知内容</label>
+            <textarea id="notificationBody" placeholder="请输入通知内容">您有一条新消息!</textarea>
+        </div>
+
+        <button id="requestPermission" class="btn-secondary">请求通知权限</button>
+        <button id="sendNotification" class="btn-primary" disabled>发送通知</button>
+        <button id="sendScheduledNotification" class="btn-success" disabled>5秒后发送通知</button>
+
+        <div class="info">
+            <strong>使用说明:</strong>
+            1. 首先点击"请求通知权限"按钮<br>
+            2. 在浏览器弹窗中允许通知<br>
+            3. 输入标题和内容后点击发送<br>
+            4. 支持即时通知和延迟通知
+        </div>
+    </div>
+
+    <script>
+        // 检查浏览器是否支持通知
+        if (!("Notification" in window)) {
+            alert("抱歉,您的浏览器不支持通知功能");
+        }
+
+        // 更新权限状态显示
+        function updatePermissionStatus() {
+            const statusElement = document.getElementById('status');
+            const permissionStatusElement = document.getElementById('permissionStatus');
+            const sendButton = document.getElementById('sendNotification');
+            const scheduledButton = document.getElementById('sendScheduledNotification');
+            
+            permissionStatusElement.textContent = Notification.permission;
+            
+            if (Notification.permission === 'granted') {
+                statusElement.className = 'status granted';
+                sendButton.disabled = false;
+                scheduledButton.disabled = false;
+            } else if (Notification.permission === 'denied') {
+                statusElement.className = 'status denied';
+                sendButton.disabled = true;
+                scheduledButton.disabled = true;
+            } else {
+                statusElement.className = 'status default';
+                sendButton.disabled = true;
+                scheduledButton.disabled = true;
+            }
+        }
+
+        // 请求通知权限
+        document.getElementById('requestPermission').addEventListener('click', async function() {
+            try {
+                const permission = await Notification.requestPermission();
+                updatePermissionStatus();
+                
+                if (permission === 'granted') {
+                    alert('✅ 通知权限已授予!');
+                } else if (permission === 'denied') {
+                    alert('❌ 通知权限被拒绝,请在浏览器设置中手动开启');
+                }
+            } catch (error) {
+                console.error('请求权限失败:', error);
+                alert('请求权限时出错: ' + error.message);
+            }
+        });
+
+        // 发送通知
+        function sendNotification(title, body, options = {}) {
+            if (Notification.permission !== 'granted') {
+                alert('请先授予通知权限!');
+                return;
+            }
+
+            const defaultOptions = {
+                body: body,
+                icon: 'https://via.placeholder.com/128/667eea/ffffff?text=📱',
+                badge: 'https://via.placeholder.com/96/764ba2/ffffff?text=!',
+                vibrate: [200, 100, 200],
+                tag: 'notification-' + Date.now(),
+                requireInteraction: false,
+                ...options
+            };
+
+            try {
+                const notification = new Notification(title, defaultOptions);
+
+                notification.onclick = function(event) {
+                    event.preventDefault();
+                    window.focus();
+                    notification.close();
+                };
+
+                notification.onerror = function(error) {
+                    console.error('通知错误:', error);
+                };
+
+                // 自动关闭通知(5秒后)
+                setTimeout(() => {
+                    notification.close();
+                }, 5000);
+
+            } catch (error) {
+                console.error('发送通知失败:', error);
+                alert('发送通知失败: ' + error.message);
+            }
+        }
+
+        // 即时发送通知
+        document.getElementById('sendNotification').addEventListener('click', function() {
+            const title = document.getElementById('notificationTitle').value || '新消息';
+            const body = document.getElementById('notificationBody').value || '您有一条新消息!';
+            
+            sendNotification(title, body);
+        });
+
+        // 延迟发送通知
+        document.getElementById('sendScheduledNotification').addEventListener('click', function() {
+            const title = document.getElementById('notificationTitle').value || '新消息';
+            const body = document.getElementById('notificationBody').value || '您有一条新消息!';
+            
+            alert('通知将在5秒后发送...');
+            
+            setTimeout(() => {
+                sendNotification(title, body, {
+                    body: body + '\n(这是一条延迟通知)',
+                    requireInteraction: true
+                });
+            }, 5000);
+        });
+
+        // 页面加载时更新状态
+        updatePermissionStatus();
+
+        // 监听可见性变化(当用户切换标签页时)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && Notification.permission === 'granted') {
+                console.log('页面已隐藏,可以发送后台通知');
+            }
+        });
+    </script>
+</body>
+</html>
