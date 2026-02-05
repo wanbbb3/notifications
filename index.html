@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#667eea">
     <title>安卓通知消息</title>
     <link rel="manifest" href="manifest.json">
+    <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -195,6 +196,10 @@
     </div>
 
     <script>
+        // 初始化 vConsole
+        var vConsole = new VConsole();
+        console.log('vConsole 已启动');
+
         // 注册 Service Worker
         let swRegistration = null;
 
