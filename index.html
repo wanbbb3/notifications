@@ -7,6 +7,7 @@
     <title>安卓通知消息</title>
     <link rel="manifest" href="manifest.json">
     <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+    <script src="push-config.js"></script>
     <style>
         * {
             margin: 0;
@@ -182,20 +183,47 @@
             <textarea id="notificationBody" placeholder="请输入通知内容">您有一条新消息!</textarea>
         </div>
 
+        <div class="input-group">
+            <label for="timerInterval">定时间隔(秒)</label>
+            <input type="number" id="timerInterval" value="2" min="1" max="300" placeholder="输入秒数">
+        </div>
+
         <button id="requestPermission" class="btn-secondary">请求通知权限</button>
         <button id="sendNotification" class="btn-primary" disabled>发送通知</button>
         <button id="sendScheduledNotification" class="btn-success" disabled>5秒后发送通知</button>
-        <button id="startTimerTest" class="btn-success" disabled>开始定时测试(每30秒)</button>
-        <button id="stopTimerTest" class="btn-secondary" disabled style="display:none;">停止定时测试</button>
+        
+        <hr style="margin: 20px 0; border: 1px solid #e0e0e0;">
+        
+        <button id="subscribePush" class="btn-primary" disabled>订阅服务器推送</button>
+        <button id="unsubscribePush" class="btn-secondary" disabled style="display:none;">取消订阅</button>
+        <button id="startServerTimer" class="btn-success" disabled style="display:none;">启动服务器定时推送</button>
+        <button id="stopServerTimer" class="btn-secondary" disabled style="display:none;">停止服务器推送</button>
+        
+        <hr style="margin: 20px 0; border: 1px solid #e0e0e0;">
+        
+        <button id="startTimerTest" class="btn-success" disabled>开始前台定时测试</button>
+        <button id="stopTimerTest" class="btn-secondary" disabled style="display:none;">停止前台测试</button>
 
         <div class="info">
             <strong>使用说明:</strong>
             1. 首先点击"请求通知权限"按钮<br>
             2. 在浏览器弹窗中允许通知<br>
-            3. 输入标题和内容后点击发送<br>
-            4. 支持即时通知和延迟通知<br>
-            5. ✨ 支持后台通知:切换到其他应用后也能收到通知<br>
-            6. 🔔 定时测试:每30秒自动发送一次通知,用于测试后台通知
+            3. 设置定时间隔(支持 1-300 秒,默认 2 秒)<br>
+            <br>
+            <strong>🚀 服务器推送(推荐 - 支持真正的后台通知):</strong><br>
+            • 点击"订阅服务器推送"连接到推送服务器<br>
+            • 点击"启动服务器定时推送"开始定时推送<br>
+            • ✅ <strong>即使应用在后台也能收到通知!</strong><br>
+            • ✅ 支持 2 秒间隔,不受浏览器限制<br>
+            • ✅ 真正的服务器端推送方案<br>
+            <br>
+            <strong>📱 前台定时测试(仅前台工作):</strong><br>
+            • 点击"开始前台定时测试"启动前台定时器<br>
+            • ⚠️ 后台会被暂停(浏览器节电机制)<br>
+            <br>
+            <strong>💡 提示:</strong><br>
+            • 服务器推送需要先运行推送服务器(npm start)<br>
+            • 服务器推送是生产环境的标准方案
         </div>
         <div id="timerStatus" class="info" style="display:none; background: #fff3cd; margin-top: 10px;">
             <strong>定时测试运行中...</strong><br>
@@ -249,6 +277,21 @@
         // 定时测试相关变量
         let timerInterval = null;
         let notificationCount = 0;
+        let pushSubscription = null;
+
+        // Base64 URL 转换
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
 
         // 更新权限状态显示
         function updatePermissionStatus() {
@@ -257,6 +300,7 @@
             const sendButton = document.getElementById('sendNotification');
             const scheduledButton = document.getElementById('sendScheduledNotification');
             const startTimerButton = document.getElementById('startTimerTest');
+            const subscribePushButton = document.getElementById('subscribePush');
             
             permissionStatusElement.textContent = Notification.permission;
             
@@ -265,16 +309,19 @@
                 sendButton.disabled = false;
                 scheduledButton.disabled = false;
                 startTimerButton.disabled = false;
+                subscribePushButton.disabled = false;
             } else if (Notification.permission === 'denied') {
                 statusElement.className = 'status denied';
                 sendButton.disabled = true;
                 scheduledButton.disabled = true;
                 startTimerButton.disabled = true;
+                subscribePushButton.disabled = true;
             } else {
                 statusElement.className = 'status default';
                 sendButton.disabled = true;
                 scheduledButton.disabled = true;
                 startTimerButton.disabled = true;
+                subscribePushButton.disabled = true;
             }
         }
 
@@ -361,16 +408,22 @@
             }, 5000);
         });
 
+        // 定时间隔(毫秒)
+        let currentInterval = 2000;
+
         // 更新下次通知时间显示
         function updateNextNotificationTime() {
-            const nextTime = new Date(Date.now() + 30000);
+            const nextTime = new Date(Date.now() + currentInterval);
             const timeString = nextTime.toLocaleTimeString('zh-CN');
             document.getElementById('nextNotificationTime').textContent = timeString;
         }
 
         // 开始定时测试
-        document.getElementById('startTimerTest').addEventListener('click', function() {
-            console.log('🔔 开始定时测试,每30秒发送一次通知');
+        document.getElementById('startTimerTest').addEventListener('click', async function() {
+            const intervalSeconds = parseInt(document.getElementById('timerInterval').value) || 2;
+            currentInterval = intervalSeconds * 1000;
+            
+            console.log(`🔔 开始定时测试,每${intervalSeconds}秒发送一次通知`);
             
             notificationCount = 0;
             document.getElementById('notificationCount').textContent = '0';
@@ -384,19 +437,52 @@
             // 立即发送第一条通知
             sendTimerNotification();
             
-            // 每30秒发送一次
+            // 使用前台定时器(页面激活时工作)
             timerInterval = setInterval(() => {
                 sendTimerNotification();
-            }, 30000);
+            }, currentInterval);
+            
+            // 使用 Wake Lock API 防止页面休眠(如果支持)
+            if ('wakeLock' in navigator) {
+                try {
+                    const wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('✅ Wake Lock 已激活,防止页面休眠');
+                    console.log('⚠️ 注意:锁屏或切换应用后 Wake Lock 会被释放');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('⚠️ Wake Lock 已释放,定时器可能会被暂停');
+                    });
+                } catch (error) {
+                    console.warn('⚠️ Wake Lock 请求失败:', error.message);
+                }
+            } else {
+                console.warn('⚠️ 浏览器不支持 Wake Lock API');
+            }
+            
+            // 提示用户关于后台限制
+            if (intervalSeconds < 10) {
+                console.warn('⚠️ 短间隔定时器在后台会被暂停');
+                console.warn('💡 建议:保持页面在前台,或使用分屏模式');
+            }
         });
 
         // 停止定时测试
-        document.getElementById('stopTimerTest').addEventListener('click', function() {
+        document.getElementById('stopTimerTest').addEventListener('click', async function() {
             console.log('⏹️ 停止定时测试');
             
             if (timerInterval) {
                 clearInterval(timerInterval);
                 timerInterval = null;
+            }
+            
+            // 取消周期性后台同步
+            if ('periodicSync' in swRegistration) {
+                try {
+                    await swRegistration.periodicSync.unregister('timer-notification');
+                    console.log('✅ 周期性后台同步已取消');
+                } catch (error) {
+                    console.warn('⚠️ 取消周期性后台同步失败:', error.message);
+                }
             }
             
             document.getElementById('timerStatus').style.display = 'none';
@@ -425,6 +511,126 @@
             document.getElementById('notificationCount').textContent = notificationCount;
             updateNextNotificationTime();
         }
+
+        // 订阅服务器推送
+        document.getElementById('subscribePush').addEventListener('click', async function() {
+            try {
+                console.log('开始订阅服务器推送...');
+                
+                if (!swRegistration) {
+                    alert('Service Worker 未就绪');
+                    return;
+                }
+                
+                // 获取推送订阅
+                const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+                pushSubscription = await swRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                });
+                
+                console.log('推送订阅成功:', pushSubscription.endpoint);
+                
+                // 发送订阅信息到服务器
+                const response = await fetch(`${PUSH_SERVER_URL}/subscribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(pushSubscription)
+                });
+                
+                if (response.ok) {
+                    console.log('✅ 订阅已发送到服务器');
+                    alert('✅ 服务器推送订阅成功!');
+                    document.getElementById('subscribePush').style.display = 'none';
+                    document.getElementById('unsubscribePush').style.display = 'block';
+                    document.getElementById('unsubscribePush').disabled = false;
+                    document.getElementById('startServerTimer').style.display = 'block';
+                    document.getElementById('startServerTimer').disabled = false;
+                } else {
+                    throw new Error('服务器订阅失败');
+                }
+            } catch (error) {
+                console.error('订阅失败:', error);
+                alert('订阅失败: ' + error.message);
+            }
+        });
+        
+        // 取消订阅
+        document.getElementById('unsubscribePush').addEventListener('click', async function() {
+            try {
+                if (pushSubscription) {
+                    await pushSubscription.unsubscribe();
+                    
+                    // 通知服务器
+                    await fetch(`${PUSH_SERVER_URL}/unsubscribe`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ endpoint: pushSubscription.endpoint })
+                    });
+                    
+                    pushSubscription = null;
+                    console.log('✅ 已取消订阅');
+                    alert('已取消订阅');
+                    
+                    document.getElementById('subscribePush').style.display = 'block';
+                    document.getElementById('unsubscribePush').style.display = 'none';
+                    document.getElementById('startServerTimer').style.display = 'none';
+                    document.getElementById('stopServerTimer').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('取消订阅失败:', error);
+                alert('取消订阅失败: ' + error.message);
+            }
+        });
+        
+        // 启动服务器定时推送
+        document.getElementById('startServerTimer').addEventListener('click', async function() {
+            try {
+                const intervalSeconds = parseInt(document.getElementById('timerInterval').value) || 2;
+                
+                const response = await fetch(`${PUSH_SERVER_URL}/start-timer`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ interval: intervalSeconds })
+                });
+                
+                const data = await response.json();
+                console.log('✅ 服务器定时推送已启动:', data);
+                alert(`✅ 服务器定时推送已启动\n间隔: ${intervalSeconds}秒\n即使应用在后台也能收到通知!`);
+                
+                document.getElementById('startServerTimer').style.display = 'none';
+                document.getElementById('stopServerTimer').style.display = 'block';
+                document.getElementById('stopServerTimer').disabled = false;
+            } catch (error) {
+                console.error('启动服务器推送失败:', error);
+                alert('启动失败: ' + error.message + '\n请确保推送服务器正在运行');
+            }
+        });
+        
+        // 停止服务器定时推送
+        document.getElementById('stopServerTimer').addEventListener('click', async function() {
+            try {
+                const response = await fetch(`${PUSH_SERVER_URL}/stop-timer`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                console.log('⏹️ 服务器定时推送已停止:', data);
+                alert(`⏹️ 服务器定时推送已停止\n共发送: ${data.totalSent} 条`);
+                
+                document.getElementById('startServerTimer').style.display = 'block';
+                document.getElementById('stopServerTimer').style.display = 'none';
+            } catch (error) {
+                console.error('停止服务器推送失败:', error);
+                alert('停止失败: ' + error.message);
+            }
+        });
 
         // 页面加载时更新状态
         updatePermissionStatus();

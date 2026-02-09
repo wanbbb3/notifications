@@ -45,9 +45,9 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// 处理推送通知
+// 处理推送通知（服务器推送）
 self.addEventListener('push', event => {
-  console.log('Service Worker: 收到推送消息');
+  console.log('Service Worker: 收到服务器推送消息');
   
   let notificationData = {
     title: '新消息',
@@ -55,15 +55,18 @@ self.addEventListener('push', event => {
     icon: 'https://via.placeholder.com/128/667eea/ffffff?text=📱',
     badge: 'https://via.placeholder.com/96/764ba2/ffffff?text=!',
     vibrate: [200, 100, 200],
-    tag: 'notification-tag',
+    tag: 'push-notification-' + Date.now(),
     requireInteraction: false
   };
 
+  // 解析推送数据
   if (event.data) {
     try {
       const data = event.data.json();
+      console.log('推送数据:', data);
       notificationData = { ...notificationData, ...data };
     } catch (e) {
+      console.error('解析推送数据失败:', e);
       notificationData.body = event.data.text();
     }
   }
@@ -77,7 +80,8 @@ self.addEventListener('push', event => {
       tag: notificationData.tag,
       requireInteraction: notificationData.requireInteraction,
       data: {
-        url: self.location.origin
+        url: self.location.origin,
+        timestamp: notificationData.timestamp || Date.now()
       }
     })
   );
@@ -109,4 +113,58 @@ self.addEventListener('notificationclick', event => {
 // 处理通知关闭事件
 self.addEventListener('notificationclose', event => {
   console.log('Service Worker: 通知被关闭', event.notification.tag);
+});
+
+// 处理周期性后台同步(用于定时通知)
+self.addEventListener('periodicsync', event => {
+  console.log('Service Worker: 收到周期性同步事件', event.tag);
+  
+  if (event.tag === 'timer-notification') {
+    event.waitUntil(sendPeriodicNotification());
+  }
+});
+
+// 发送周期性通知
+async function sendPeriodicNotification() {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString('zh-CN');
+  
+  console.log('Service Worker: 发送周期性通知', timeString);
+  
+  return self.registration.showNotification('后台定时通知', {
+    body: `发送时间: ${timeString}\n这是后台周期性通知`,
+    icon: 'https://via.placeholder.com/128/667eea/ffffff?text=📱',
+    badge: 'https://via.placeholder.com/96/764ba2/ffffff?text=!',
+    vibrate: [200, 100, 200],
+    tag: 'periodic-notification-' + Date.now(),
+    requireInteraction: false,
+    data: {
+      url: self.location.origin,
+      timestamp: Date.now()
+    }
+  });
+}
+
+// 处理消息(用于页面和 Service Worker 通信)
+self.addEventListener('message', event => {
+  console.log('Service Worker: 收到消息', event.data);
+  
+  if (event.data && event.data.type === 'SEND_NOTIFICATION') {
+    const { title, body, options } = event.data;
+    event.waitUntil(
+      self.registration.showNotification(title, {
+        body: body,
+        icon: 'https://via.placeholder.com/128/667eea/ffffff?text=📱',
+        badge: 'https://via.placeholder.com/96/764ba2/ffffff?text=!',
+        vibrate: [200, 100, 200],
+        tag: 'message-notification-' + Date.now(),
+        requireInteraction: false,
+        ...options,
+        data: {
+          url: self.location.origin,
+          timestamp: Date.now()
+        }
+      })
+    );
+  }
 });
