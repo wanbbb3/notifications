@@ -1,6 +1,6 @@
 // VAPID 密钥配置（浏览器和 Node.js 通用）
-var VAPID_PUBLIC_KEY = 'BGrQ8hwKR2GVqx135MplUTtwvRWZdfjPU39m4dxwlNmp5bPqBLd8d4GlrObsdj6BsD328NGVh_jkEJ8a_vVpkS8';
-var VAPID_PRIVATE_KEY = 'hMCvlxw7A6nMzrNx3gwOnE8ox-_nd2NPhcuka0eaRz8';
+var VAPID_PUBLIC_KEY = 'BNVOICRKtD4y5tB5ZZiMq0-mpQd9LgwynrnZa8dhb0fnc7Ks8vwn5WmJUTlRc2BZbOXDowFK1C0R2d9UACaoiaQ';
+var VAPID_PRIVATE_KEY = 'vriOlhtXkFpe3cp8UDDqYXB5ZYb7F1K1_oEcouoxiVA';
 
 // 服务器配置（使用局域网 IP 以支持手机访问）
 var PUSH_SERVER_URL = 'http://192.168.0.18:3000';
