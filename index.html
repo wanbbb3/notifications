@@ -535,6 +535,18 @@
                 const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
                 console.log('✅ VAPID 密钥转换成功');
                 
+                // 检查 pushManager 是否存在
+                console.log('检查 pushManager:', swRegistration.pushManager);
+                console.log('pushManager.subscribe 存在:', typeof swRegistration.pushManager?.subscribe);
+                
+                if (!swRegistration.pushManager) {
+                    throw new Error('pushManager 不存在,可能是浏览器不支持或使用了非安全上下文(HTTP)');
+                }
+                
+                if (typeof swRegistration.pushManager.subscribe !== 'function') {
+                    throw new Error('pushManager.subscribe 不是函数');
+                }
+                
                 console.log('🔔 步骤3: 请求推送订阅...');
                 pushSubscription = await swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
