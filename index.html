@@ -197,6 +197,7 @@
         <button id="subscribePush" class="btn-primary" disabled>订阅服务器推送</button>
         <button id="unsubscribePush" class="btn-secondary" disabled style="display:none;">取消订阅</button>
         <button id="checkSubscription" class="btn-info">查询订阅状态</button>
+        <button id="testNetwork" class="btn-warning">测试网络连接</button>
         <button id="clearSubscription" class="btn-secondary">清除所有订阅</button>
         <button id="startServerTimer" class="btn-success" disabled style="display:none;">启动服务器定时推送</button>
         <button id="stopServerTimer" class="btn-secondary" disabled style="display:none;">停止服务器推送</button>
@@ -714,6 +715,91 @@
             } catch (error) {
                 console.error('❌ 查询订阅状态失败:', error);
                 alert('查询失败: ' + error.message);
+            }
+        });
+        
+        // 测试网络连接
+        document.getElementById('testNetwork').addEventListener('click', async function() {
+            try {
+                console.log('🌐 开始网络连接测试...');
+                console.log('=== 网络连接测试 ===');
+                console.log('当前时间:', new Date().toLocaleString());
+                console.log('用户代理:', navigator.userAgent);
+                console.log('当前地址:', window.location.href);
+                
+                // 测试基本网络连接
+                console.log('\n--- 基本网络连接 ---');
+                try {
+                    const response1 = await fetch('https://www.google.com', {method: 'HEAD'});
+                    console.log('✅ Google 连接正常:', response1.status);
+                } catch (error) {
+                    console.log('❌ Google 连接失败:', error.message);
+                }
+                
+                // 测试 Google FCM 连接
+                console.log('\n--- FCM 推送服务连接 ---');
+                try {
+                    const response2 = await fetch('https://fcm.googleapis.com', {method: 'HEAD'});
+                    console.log('✅ FCM 连接正常:', response2.status);
+                } catch (error) {
+                    console.log('❌ FCM 连接失败:', error.message);
+                    console.log('⚠️ 这可能导致推送订阅失败');
+                }
+                
+                // 测试 Mozilla 推送服务
+                console.log('\n--- Mozilla 推送服务连接 ---');
+                try {
+                    const response3 = await fetch('https://updates.push.services.mozilla.com', {method: 'HEAD'});
+                    console.log('✅ Mozilla 推送服务正常:', response3.status);
+                } catch (error) {
+                    console.log('❌ Mozilla 推送服务失败:', error.message);
+                }
+                
+                // 测试本地服务器连接
+                console.log('\n--- 本地推送服务器连接 ---');
+                try {
+                    const response4 = await fetch(`${PUSH_SERVER_URL}/status`);
+                    const status = await response4.json();
+                    console.log('✅ 本地服务器正常:', status);
+                    console.log('  - 服务器订阅数:', status.subscriptions);
+                    console.log('  - 定时器状态:', status.timerRunning);
+                } catch (error) {
+                    console.log('❌ 本地服务器连接失败:', error.message);
+                    console.log('  - 服务器地址:', PUSH_SERVER_URL);
+                }
+                
+                // 测试 DNS 解析
+                console.log('\n--- DNS 解析测试 ---');
+                try {
+                    const response5 = await fetch('https://dns.google/resolve?name=fcm.googleapis.com', {method: 'GET'});
+                    const dns = await response5.json();
+                    console.log('✅ FCM DNS 解析正常:', dns.Answer ? dns.Answer.length + ' 个记录' : '无记录');
+                } catch (error) {
+                    console.log('❌ FCM DNS 解析失败:', error.message);
+                }
+                
+                // 检查网络环境
+                console.log('\n--- 网络环境信息 ---');
+                console.log('在线状态:', navigator.onLine);
+                console.log('连接类型:', navigator.connection ? navigator.connection.effectiveType : '未知');
+                console.log('安全上下文:', window.isSecureContext);
+                console.log('协议:', window.location.protocol);
+                
+                // 给出建议
+                console.log('\n--- 诊断建议 ---');
+                if (navigator.onLine && window.isSecureContext) {
+                    console.log('✅ 网络环境基本正常,如果订阅失败可能是推送服务问题');
+                } else {
+                    console.log('⚠️ 网络环境可能有问题');
+                    if (!navigator.onLine) console.log('- 设备离线');
+                    if (!window.isSecureContext) console.log('- 非安全上下文,需要 HTTPS 或 localhost');
+                }
+                
+                alert('✅ 网络测试完成!\n请查看 vConsole 日志获取详细信息');
+                
+            } catch (error) {
+                console.error('❌ 网络测试失败:', error);
+                alert('网络测试失败: ' + error.message);
             }
         });
         
