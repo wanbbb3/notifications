@@ -561,6 +561,11 @@
                 if (typeof swRegistration.pushManager.subscribe !== 'function') {
                     throw new Error('pushManager.subscribe 不是函数');
                 }
+
+                console.log('applicationServerKey', applicationServerKey);
+                console.log('applicationServerKey', VAPID_PUBLIC_KEY);
+
+                
                 
                 console.log('🔔 步骤3: 请求推送订阅...');
                 pushSubscription = await swRegistration.pushManager.subscribe({
