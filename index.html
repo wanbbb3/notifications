@@ -568,6 +568,25 @@
                 console.log('VAPID_PUBLIC_KEY (原始):', VAPID_PUBLIC_KEY);
                 console.log('applicationServerKey 类型:', typeof applicationServerKey);
                 console.log('applicationServerKey 长度:', applicationServerKey.length);
+                
+                // 详细验证 VAPID 密钥
+                console.log('\n=== VAPID 密钥详细验证 ===');
+                console.log('原始公钥前10字符:', VAPID_PUBLIC_KEY.substring(0, 10));
+                console.log('原始公钥后10字符:', VAPID_PUBLIC_KEY.substring(VAPID_PUBLIC_KEY.length - 10));
+                console.log('原始公钥长度:', VAPID_PUBLIC_KEY.length);
+                
+                // 检查转换结果
+                console.log('转换后前5字节:', Array.from(applicationServerKey.slice(0, 5)));
+                console.log('转换后首字节 (应为4):', applicationServerKey[0]);
+                console.log('转换后总长度 (应为65):', applicationServerKey.length);
+                
+                // 验证 Base64 URL 转换函数
+                console.log('\n=== 验证转换函数 ===');
+                const testKey = 'BLxiPtApGtKzOrPCX2iUxuCxgCcRGOt9wYOwJYQ4yZXSRxPdLL0GHsmP80qbSEofgLFfkaZabx0fHtKS6ho6xP8';
+                const testArray = urlBase64ToUint8Array(testKey);
+                console.log('测试转换结果长度:', testArray.length);
+                console.log('测试转换首字节:', testArray[0]);
+                console.log('转换函数工作正常:', testArray.length === 65 && testArray[0] === 4);
 
                 console.log('applicationServerKey 长度333:', applicationServerKey.length);
 
