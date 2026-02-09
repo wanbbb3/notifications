@@ -196,6 +196,8 @@
         
         <button id="subscribePush" class="btn-primary" disabled>订阅服务器推送</button>
         <button id="unsubscribePush" class="btn-secondary" disabled style="display:none;">取消订阅</button>
+        <button id="checkSubscription" class="btn-info">查询订阅状态</button>
+        <button id="clearSubscription" class="btn-secondary">清除所有订阅</button>
         <button id="startServerTimer" class="btn-success" disabled style="display:none;">启动服务器定时推送</button>
         <button id="stopServerTimer" class="btn-secondary" disabled style="display:none;">停止服务器推送</button>
         
@@ -621,6 +623,125 @@
 
                 console.error('错误堆栈:', error.stack);
                 alert('订阅失败: ' + error.message);
+            }
+        });
+        
+        // 查询订阅状态
+        document.getElementById('checkSubscription').addEventListener('click', async function() {
+            try {
+                console.log('🔍 查询订阅状态...');
+                
+                // 检查 Service Worker 状态
+                console.log('=== Service Worker 状态 ===');
+                console.log('swRegistration 存在:', !!swRegistration);
+                if (swRegistration) {
+                    console.log('swRegistration.active:', !!swRegistration.active);
+                    console.log('swRegistration.installing:', !!swRegistration.installing);
+                    console.log('swRegistration.waiting:', !!swRegistration.waiting);
+                    console.log('swRegistration.scope:', swRegistration.scope);
+                }
+                
+                // 检查推送管理器状态
+                console.log('\n=== Push Manager 状态 ===');
+                if (swRegistration && swRegistration.pushManager) {
+                    console.log('pushManager 存在:', true);
+                    console.log('pushManager.subscribe 类型:', typeof swRegistration.pushManager.subscribe);
+                    
+                    // 获取现有订阅
+                    const existingSubscription = await swRegistration.pushManager.getSubscription();
+                    console.log('现有订阅:', !!existingSubscription);
+                    if (existingSubscription) {
+                        console.log('订阅端点:', existingSubscription.endpoint);
+                        console.log('订阅选项:', existingSubscription.options);
+                    }
+                } else {
+                    console.log('pushManager 不存在');
+                }
+                
+                // 检查本地变量状态
+                console.log('\n=== 本地变量状态 ===');
+                console.log('pushSubscription 存在:', !!pushSubscription);
+                if (pushSubscription) {
+                    console.log('本地订阅端点:', pushSubscription.endpoint);
+                }
+                
+                // 检查权限状态
+                console.log('\n=== 权限状态 ===');
+                console.log('通知权限:', Notification.permission);
+                console.log('安全上下文:', window.isSecureContext);
+                console.log('当前协议:', window.location.protocol);
+                console.log('当前地址:', window.location.href);
+                
+                // 检查 VAPID 密钥
+                console.log('\n=== VAPID 密钥状态 ===');
+                console.log('VAPID_PUBLIC_KEY 存在:', !!VAPID_PUBLIC_KEY);
+                console.log('VAPID_PUBLIC_KEY 长度:', VAPID_PUBLIC_KEY?.length);
+                console.log('PUSH_SERVER_URL:', PUSH_SERVER_URL);
+                
+                // 检查服务器状态
+                console.log('\n=== 服务器状态 ===');
+                try {
+                    const response = await fetch(`${PUSH_SERVER_URL}/status`);
+                    const status = await response.json();
+                    console.log('服务器订阅数:', status.subscriptions);
+                    console.log('定时器状态:', status.timerRunning);
+                    console.log('已发送推送数:', status.pushCount);
+                } catch (error) {
+                    console.log('服务器连接失败:', error.message);
+                }
+                
+                alert('✅ 订阅状态查询完成!\n请查看 vConsole 日志获取详细信息');
+                
+            } catch (error) {
+                console.error('❌ 查询订阅状态失败:', error);
+                alert('查询失败: ' + error.message);
+            }
+        });
+        
+        // 清除所有订阅
+        document.getElementById('clearSubscription').addEventListener('click', async function() {
+            try {
+                console.log('🧹 开始清除所有订阅...');
+                
+                // 清除本地订阅
+                if (pushSubscription) {
+                    await pushSubscription.unsubscribe();
+                    console.log('✅ 本地订阅已清除');
+                    pushSubscription = null;
+                }
+                
+                // 清除 Service Worker
+                if (swRegistration) {
+                    await swRegistration.unregister();
+                    console.log('✅ Service Worker 已注销');
+                }
+                
+                // 清除浏览器缓存
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(cacheName => caches.delete(cacheName))
+                    );
+                    console.log('✅ 缓存已清除');
+                }
+                
+                // 重置 UI
+                document.getElementById('subscribePush').style.display = 'block';
+                document.getElementById('subscribePush').disabled = false;
+                document.getElementById('unsubscribePush').style.display = 'none';
+                document.getElementById('startServerTimer').style.display = 'none';
+                document.getElementById('stopServerTimer').style.display = 'none';
+                
+                alert('✅ 所有订阅已清除!\n请刷新页面重新开始');
+                
+                // 延迟刷新
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('❌ 清除订阅失败:', error);
+                alert('清除订阅失败: ' + error.message);
             }
         });
         
