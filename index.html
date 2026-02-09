@@ -562,15 +562,15 @@
                     throw new Error('pushManager.subscribe 不是函数');
                 }
 
-                console.log('applicationServerKey', applicationServerKey);
-                console.log('applicationServerKey', VAPID_PUBLIC_KEY);
+                console.log('applicationServerKey (转换后):', applicationServerKey);
+                console.log('VAPID_PUBLIC_KEY (原始):', VAPID_PUBLIC_KEY);
+                console.log('applicationServerKey 类型:', typeof applicationServerKey);
+                console.log('applicationServerKey 长度:', applicationServerKey.length);
 
-                
-                
                 console.log('🔔 步骤3: 请求推送订阅...');
                 pushSubscription = await swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: VAPID_PUBLIC_KEY
+                    applicationServerKey: applicationServerKey
                 });
                 
                 console.log('✅ 推送订阅成功');
