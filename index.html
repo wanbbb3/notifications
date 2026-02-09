@@ -567,6 +567,19 @@
                 console.log('applicationServerKey 类型:', typeof applicationServerKey);
                 console.log('applicationServerKey 长度:', applicationServerKey.length);
 
+                console.log('applicationServerKey 长度333:', applicationServerKey.length);
+
+
+                // 在 vConsole 中运行
+                if (swRegistration && swRegistration.pushManager) {
+                    swRegistration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: applicationServerKey
+                    }).then(sub => console.log('订阅成功:', sub.endpoint))
+                    .catch(err => console.error('订阅失败:', err));
+                }
+                return
+
                 console.log('🔔 步骤3: 请求推送订阅...');
                 pushSubscription = await swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
