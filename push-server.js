@@ -169,7 +169,11 @@ app.get('/status', (req, res) => {
 });
 
 // 启动服务器
-app.listen(PORT, () => {
-  console.log(`🚀 推送服务器运行在 http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 推送服务器运行在 http://0.0.0.0:${PORT}`);
+  console.log(`📱 可通过以下地址访问:`);
+  console.log(`   - http://localhost:${PORT}`);
+  console.log(`   - http://127.0.0.1:${PORT}`);
+  console.log(`   - http://你的IP地址:${PORT}`);
   console.log(`📱 VAPID Public Key: ${VAPID_PUBLIC_KEY.substring(0, 20)}...`);
 });

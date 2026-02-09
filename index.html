@@ -515,23 +515,38 @@
         // 订阅服务器推送
         document.getElementById('subscribePush').addEventListener('click', async function() {
             try {
-                console.log('开始订阅服务器推送...');
+                console.log('🔔 步骤1: 开始订阅服务器推送...');
+                console.log('VAPID_PUBLIC_KEY:', typeof VAPID_PUBLIC_KEY, VAPID_PUBLIC_KEY ? VAPID_PUBLIC_KEY.substring(0, 20) + '...' : 'undefined');
+                console.log('PUSH_SERVER_URL:', PUSH_SERVER_URL);
                 
                 if (!swRegistration) {
+                    console.error('❌ Service Worker 未注册');
                     alert('Service Worker 未就绪');
                     return;
                 }
+                console.log('✅ Service Worker 已就绪');
                 
-                // 获取推送订阅
+                // 检查 VAPID_PUBLIC_KEY 是否存在
+                if (typeof VAPID_PUBLIC_KEY === 'undefined') {
+                    throw new Error('VAPID_PUBLIC_KEY 未定义,请检查 push-config.js 是否正确加载');
+                }
+                
+                console.log('🔔 步骤2: 转换 VAPID 密钥...');
                 const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+                console.log('✅ VAPID 密钥转换成功');
+                
+                console.log('🔔 步骤3: 请求推送订阅...');
                 pushSubscription = await swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: applicationServerKey
                 });
                 
-                console.log('推送订阅成功:', pushSubscription.endpoint);
+                console.log('✅ 推送订阅成功');
+                console.log('订阅端点:', pushSubscription.endpoint);
                 
-                // 发送订阅信息到服务器
+                console.log('🔔 步骤4: 发送订阅信息到服务器...');
+                console.log('服务器地址:', `${PUSH_SERVER_URL}/subscribe`);
+                
                 const response = await fetch(`${PUSH_SERVER_URL}/subscribe`, {
                     method: 'POST',
                     headers: {
@@ -540,8 +555,11 @@
                     body: JSON.stringify(pushSubscription)
                 });
                 
+                console.log('服务器响应状态:', response.status);
+                
                 if (response.ok) {
-                    console.log('✅ 订阅已发送到服务器');
+                    const data = await response.json();
+                    console.log('✅ 订阅已发送到服务器:', data);
                     alert('✅ 服务器推送订阅成功!');
                     document.getElementById('subscribePush').style.display = 'none';
                     document.getElementById('unsubscribePush').style.display = 'block';
@@ -549,10 +567,12 @@
                     document.getElementById('startServerTimer').style.display = 'block';
                     document.getElementById('startServerTimer').disabled = false;
                 } else {
-                    throw new Error('服务器订阅失败');
+                    const errorText = await response.text();
+                    throw new Error(`服务器订阅失败: ${response.status} - ${errorText}`);
                 }
             } catch (error) {
-                console.error('订阅失败:', error);
+                console.error('❌ 订阅失败:', error);
+                console.error('错误堆栈:', error.stack);
                 alert('订阅失败: ' + error.message);
             }
         });
