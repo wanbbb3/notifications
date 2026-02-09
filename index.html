@@ -584,6 +584,8 @@
                 }
             } catch (error) {
                 console.error('❌ 订阅失败:', error);
+                console.error('❌ 订阅失败:', error.code);
+
                 console.error('错误堆栈:', error.stack);
                 alert('订阅失败: ' + error.message);
             }
