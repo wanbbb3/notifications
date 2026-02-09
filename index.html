@@ -185,13 +185,22 @@
         <button id="requestPermission" class="btn-secondary">请求通知权限</button>
         <button id="sendNotification" class="btn-primary" disabled>发送通知</button>
         <button id="sendScheduledNotification" class="btn-success" disabled>5秒后发送通知</button>
+        <button id="startTimerTest" class="btn-success" disabled>开始定时测试(每30秒)</button>
+        <button id="stopTimerTest" class="btn-secondary" disabled style="display:none;">停止定时测试</button>
 
         <div class="info">
             <strong>使用说明:</strong>
             1. 首先点击"请求通知权限"按钮<br>
             2. 在浏览器弹窗中允许通知<br>
             3. 输入标题和内容后点击发送<br>
-            4. 支持即时通知和延迟通知
+            4. 支持即时通知和延迟通知<br>
+            5. ✨ 支持后台通知:切换到其他应用后也能收到通知<br>
+            6. 🔔 定时测试:每30秒自动发送一次通知,用于测试后台通知
+        </div>
+        <div id="timerStatus" class="info" style="display:none; background: #fff3cd; margin-top: 10px;">
+            <strong>定时测试运行中...</strong><br>
+            下次通知时间: <span id="nextNotificationTime">--</span><br>
+            已发送: <span id="notificationCount">0</span> 条通知
         </div>
     </div>
 
@@ -237,12 +246,17 @@
             console.warn('浏览器不支持 Service Worker');
         }
 
+        // 定时测试相关变量
+        let timerInterval = null;
+        let notificationCount = 0;
+
         // 更新权限状态显示
         function updatePermissionStatus() {
             const statusElement = document.getElementById('status');
             const permissionStatusElement = document.getElementById('permissionStatus');
             const sendButton = document.getElementById('sendNotification');
             const scheduledButton = document.getElementById('sendScheduledNotification');
+            const startTimerButton = document.getElementById('startTimerTest');
             
             permissionStatusElement.textContent = Notification.permission;
             
@@ -250,14 +264,17 @@
                 statusElement.className = 'status granted';
                 sendButton.disabled = false;
                 scheduledButton.disabled = false;
+                startTimerButton.disabled = false;
             } else if (Notification.permission === 'denied') {
                 statusElement.className = 'status denied';
                 sendButton.disabled = true;
                 scheduledButton.disabled = true;
+                startTimerButton.disabled = true;
             } else {
                 statusElement.className = 'status default';
                 sendButton.disabled = true;
                 scheduledButton.disabled = true;
+                startTimerButton.disabled = true;
             }
         }
 
@@ -278,10 +295,19 @@
             }
         });
 
-        // 发送通知(使用 Service Worker)
+        // 发送通知(使用 Service Worker 支持后台通知)
         async function sendNotification(title, body, options = {}) {
+            console.log('准备发送通知:', title, body);
+            
             if (Notification.permission !== 'granted') {
+                console.warn('通知权限未授予');
                 alert('请先授予通知权限!');
+                return;
+            }
+
+            if (!swRegistration) {
+                console.error('Service Worker 未注册');
+                alert('Service Worker 未就绪,请刷新页面重试');
                 return;
             }
 
@@ -292,38 +318,22 @@
                 vibrate: [200, 100, 200],
                 tag: 'notification-' + Date.now(),
                 requireInteraction: false,
+                silent: false,
                 data: {
-                    url: window.location.href
+                    url: window.location.href,
+                    timestamp: Date.now()
                 },
                 ...options
             };
 
             try {
-                // 优先使用 Service Worker 发送通知(更适合 Android)
-                if (swRegistration && swRegistration.showNotification) {
-                    await swRegistration.showNotification(title, defaultOptions);
-                    console.log('通知已通过 Service Worker 发送');
-                } else {
-                    // 降级到普通通知 API
-                    const notification = new Notification(title, defaultOptions);
-
-                    notification.onclick = function(event) {
-                        event.preventDefault();
-                        window.focus();
-                        notification.close();
-                    };
-
-                    notification.onerror = function(error) {
-                        console.error('通知错误:', error);
-                    };
-
-                    // 自动关闭通知(5秒后)
-                    setTimeout(() => {
-                        notification.close();
-                    }, 5000);
-                }
+                // 必须使用 Service Worker 发送通知才能支持后台
+                await swRegistration.showNotification(title, defaultOptions);
+                console.log('✅ 通知已通过 Service Worker 发送(支持后台)');
+                console.log('页面可见性:', document.hidden ? '后台' : '前台');
             } catch (error) {
-                console.error('发送通知失败:', error);
+                console.error('❌ 发送通知失败:', error);
+                console.error('错误详情:', error.message);
                 alert('发送通知失败: ' + error.message);
             }
         }
@@ -351,13 +361,85 @@
             }, 5000);
         });
 
+        // 更新下次通知时间显示
+        function updateNextNotificationTime() {
+            const nextTime = new Date(Date.now() + 30000);
+            const timeString = nextTime.toLocaleTimeString('zh-CN');
+            document.getElementById('nextNotificationTime').textContent = timeString;
+        }
+
+        // 开始定时测试
+        document.getElementById('startTimerTest').addEventListener('click', function() {
+            console.log('🔔 开始定时测试,每30秒发送一次通知');
+            
+            notificationCount = 0;
+            document.getElementById('notificationCount').textContent = '0';
+            document.getElementById('timerStatus').style.display = 'block';
+            document.getElementById('startTimerTest').style.display = 'none';
+            document.getElementById('stopTimerTest').style.display = 'block';
+            document.getElementById('stopTimerTest').disabled = false;
+            
+            updateNextNotificationTime();
+            
+            // 立即发送第一条通知
+            sendTimerNotification();
+            
+            // 每30秒发送一次
+            timerInterval = setInterval(() => {
+                sendTimerNotification();
+            }, 30000);
+        });
+
+        // 停止定时测试
+        document.getElementById('stopTimerTest').addEventListener('click', function() {
+            console.log('⏹️ 停止定时测试');
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            document.getElementById('timerStatus').style.display = 'none';
+            document.getElementById('startTimerTest').style.display = 'block';
+            document.getElementById('stopTimerTest').style.display = 'none';
+        });
+
+        // 发送定时测试通知
+        function sendTimerNotification() {
+            notificationCount++;
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('zh-CN');
+            
+            console.log(`📬 发送第 ${notificationCount} 条定时通知 [${timeString}]`);
+            console.log('页面状态:', document.hidden ? '后台' : '前台');
+            
+            sendNotification(
+                `定时测试通知 #${notificationCount}`,
+                `发送时间: ${timeString}\n页面状态: ${document.hidden ? '后台运行' : '前台运行'}`,
+                {
+                    tag: 'timer-test-' + notificationCount,
+                    requireInteraction: false
+                }
+            );
+            
+            document.getElementById('notificationCount').textContent = notificationCount;
+            updateNextNotificationTime();
+        }
+
         // 页面加载时更新状态
         updatePermissionStatus();
 
-        // 监听可见性变化(当用户切换标签页时)
+        // 监听可见性变化(当用户切换标签页或应用时)
         document.addEventListener('visibilitychange', function() {
-            if (document.hidden && Notification.permission === 'granted') {
-                console.log('页面已隐藏,可以发送后台通知');
+            if (document.hidden) {
+                console.log('📱 页面已切换到后台');
+                console.log('通知权限:', Notification.permission);
+                console.log('Service Worker 状态:', swRegistration ? '已注册' : '未注册');
+                if (Notification.permission === 'granted' && swRegistration) {
+                    console.log('✅ 后台通知已就绪,现在可以接收通知');
+                }
+            } else {
+                console.log('📱 页面已切换到前台');
             }
         });
     </script>
