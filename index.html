@@ -518,6 +518,10 @@
                 console.log('🔔 步骤1: 开始订阅服务器推送...');
                 console.log('VAPID_PUBLIC_KEY:', typeof VAPID_PUBLIC_KEY, VAPID_PUBLIC_KEY ? VAPID_PUBLIC_KEY.substring(0, 20) + '...' : 'undefined');
                 console.log('PUSH_SERVER_URL:', PUSH_SERVER_URL);
+                console.log('当前页面协议:', window.location.protocol);
+                console.log('当前页面地址:', window.location.href);
+                console.log('通知权限状态:', Notification.permission);
+                console.log('是否安全上下文:', window.isSecureContext);
                 
                 if (!swRegistration) {
                     console.error('❌ Service Worker 未注册');
@@ -525,6 +529,17 @@
                     return;
                 }
                 console.log('✅ Service Worker 已就绪');
+                console.log('Service Worker 状态:', swRegistration.active ? 'active' : 'not active');
+                
+                // 检查通知权限
+                if (Notification.permission !== 'granted') {
+                    throw new Error('通知权限未授予,当前状态: ' + Notification.permission + '\n请先点击"请求通知权限"并允许');
+                }
+                
+                // 检查安全上下文
+                if (!window.isSecureContext) {
+                    throw new Error('非安全上下文(需要 HTTPS 或 localhost)');
+                }
                 
                 // 检查 VAPID_PUBLIC_KEY 是否存在
                 if (typeof VAPID_PUBLIC_KEY === 'undefined') {
