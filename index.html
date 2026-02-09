@@ -565,7 +565,7 @@
                 console.log('🔔 步骤3: 请求推送订阅...');
                 pushSubscription = await swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: applicationServerKey
+                    applicationServerKey: VAPID_PUBLIC_KEY
                 });
                 
                 console.log('✅ 推送订阅成功');
