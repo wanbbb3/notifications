@@ -21,18 +21,26 @@ webpush.setVapidDetails(
 // 存储订阅信息（生产环境应使用数据库）
 let subscriptions = [];
 
+// 直接写入用户的订阅节点
+const userSubscription = {
+  endpoint: "https://fcm.googleapis.com/fcm/send/dpnhY_dCwwo:APA91bExQQYfHHFxXWikosr816KHjSm54N3GMvATEAwQor-zx3OAih6mEOA8uYRzvfmTX_S7i_z6k5DENeh9LqVNdj7bKZl8IJa-989rzSOu-T4iNj3uDjL140wkxmSlI0sMIIbRBhzk",
+  keys: {
+    p256dh: "BP4yrfyWO3fsT098GsOZIvCM9DDgr0o-EqY7YVVwcbbP2KTLUXZDNP6TEUx6K4ucPC2dcaex0LhuPxOw3DXh-70",
+    auth: "tIx9TUfIT5Bqsx6FU6UPTiULrxaI1K8rlDND0ime5No"
+  }
+};
+
+// 初始化时添加用户订阅
+subscriptions.push(userSubscription);
+console.log('已添加用户订阅:', userSubscription.endpoint);
+console.log('当前订阅数:', subscriptions.length);
+
 // 订阅端点
 app.post('/subscribe', (req, res) => {
   const subscription = req.body;
   console.log('收到新订阅:', subscription.endpoint);
   
   // 检查是否已存在
-  const exists = subscriptions.find(sub => sub.endpoint === subscription.endpoint);
-  if (!exists) {
-    subscriptions.push(subscription);
-    console.log(`当前订阅数: ${subscriptions.length}`);
-  }
-  
   res.status(201).json({ message: '订阅成功' });
 });
 
