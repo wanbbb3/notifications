@@ -4,6 +4,14 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = require('./push-config');
 
+// 如果需要代理,取消注释并配置
+// process.env.HTTP_PROXY = 'http://your-proxy:port';
+// process.env.HTTPS_PROXY = 'http://your-proxy:port';
+
+// 示例: 如果你有代理服务器
+// process.env.HTTP_PROXY = 'http://127.0.0.1:7890';
+// process.env.HTTPS_PROXY = 'http://127.0.0.1:7890';
+
 const app = express();
 const PORT = 3000;
 
@@ -23,7 +31,7 @@ let subscriptions = [];
 
 // 直接写入用户的订阅节点
 const userSubscription = {
-  endpoint: "https://fcm.googleapis.com/fcm/send/dpnhY_dCwwo:APA91bExQQYfHHFxXWikosr816KHjSm54N3GMvATEAwQor-zx3OAih6mEOA8uYRzvfmTX_S7i_z6k5DENeh9LqVNdj7bKZl8IJa-989rzSOu-T4iNj3uDjL140wkxmSlI0sMIIbRBhzk",
+  endpoint: "https://fcm.googleapis.com/fcm/send/eMmC8nAazrw:APA91bEb-mSXfeox4-wvLYbvJejCR0KrcxLFUx5WaifnQ7b_qDsgWjwvlhdo7ah_PZzPvwEih9d9B6hGYSWyvD7c3tkwklr5vrwrza6in6vT-BlEPlqmqslvF82fqz47AQOthDdQjIlJ",
   keys: {
     p256dh: "BP4yrfyWO3fsT098GsOZIvCM9DDgr0o-EqY7YVVwcbbP2KTLUXZDNP6TEUx6K4ucPC2dcaex0LhuPxOw3DXh-70",
     auth: "tIx9TUfIT5Bqsx6FU6UPTiULrxaI1K8rlDND0ime5No"
@@ -73,13 +81,25 @@ app.post('/push', async (req, res) => {
   });
   
   const promises = subscriptions.map(subscription => {
+    console.log('发送到订阅端点:', subscription.endpoint);
     return webpush.sendNotification(subscription, payload)
       .catch(error => {
-        console.error('推送失败:', error.message);
+        console.error('=== 推送失败详情 ===');
+        console.error('错误消息:', error.message);
+        console.error('状态码:', error.statusCode);
+        console.error('错误名称:', error.name);
+        console.error('订阅端点:', subscription.endpoint);
+        console.error('完整错误对象:', error);
+        console.error('==================');
+        
         // 如果订阅失效，从列表中移除
         if (error.statusCode === 410) {
+          console.log('订阅已失效，移除:', subscription.endpoint);
           subscriptions = subscriptions.filter(sub => sub.endpoint !== subscription.endpoint);
         }
+        
+        // 重新抛出错误,让 Promise.all 知道失败了
+        throw error;
       });
   });
   
@@ -90,7 +110,11 @@ app.post('/push', async (req, res) => {
       count: subscriptions.length 
     });
   } catch (error) {
-    res.status(500).json({ error: '推送发送失败' });
+    console.error('推送发送失败:', error.message);
+    res.status(500).json({ 
+      error: '推送发送失败',
+      details: error.message 
+    });
   }
 });
 
